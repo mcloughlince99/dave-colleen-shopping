@@ -4,60 +4,62 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
 <title>Grocery Run</title>
+<meta name="color-scheme" content="dark">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
-  body { background: #F4F6F4; color: #201C1A; padding-bottom: 60px; }
+  :root { color-scheme: dark; }
+  body { background: #121316; color: #F4F4F6; padding-bottom: 60px; }
   .wrap { max-width: 440px; margin: 0 auto; padding: 32px 20px 24px; }
   .top-row { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; }
-  h1 { font-family: 'Fraunces', serif; font-weight: 600; font-size: 30px; color: #0F5C56; }
-  .start-over { font-size: 12px; font-weight: 500; color: #8A9490; background: none; border: none; cursor: pointer; }
-  .start-over:hover { color: #E4572E; }
-  .progress { font-size: 14px; color: #5A6560; font-weight: 500; margin-bottom: 4px; }
-  .status { font-size: 12px; color: #8A9490; margin-bottom: 20px; min-height: 16px; }
-  .status.error { color: #E4572E; }
-  .status.ok { color: #4F8F6B; }
-  .store-card { background: #fff; border-radius: 12px; box-shadow: 0 1px 6px rgba(43,43,38,0.08); border: 1px solid #DDE3DF; margin-bottom: 24px; overflow: hidden; }
-  .store-header { background: #0F5C56; padding: 16px 20px 12px; display: flex; align-items: center; justify-content: space-between; }
+  h1 { font-family: 'Fraunces', serif; font-weight: 600; font-size: 30px; background: linear-gradient(90deg, #A78BFA, #22D3EE); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .start-over { font-size: 12px; font-weight: 500; color: #9CA3AF; background: none; border: none; cursor: pointer; }
+  .start-over:hover { color: #F43F5E; }
+  .progress { font-size: 14px; color: #9CA3AF; font-weight: 500; margin-bottom: 4px; }
+  .status { font-size: 12px; color: #9CA3AF; margin-bottom: 20px; min-height: 16px; }
+  .status.error { color: #F43F5E; }
+  .status.ok { color: #34D399; }
+  .store-card { background: #1C1E23; border-radius: 12px; box-shadow: 0 1px 6px rgba(0,0,0,0.4); border: 1px solid #2A2D34; margin-bottom: 24px; overflow: hidden; }
+  .store-header { background: linear-gradient(135deg, #7C3AED, #5B21B6); padding: 16px 20px 12px; display: flex; align-items: center; justify-content: space-between; }
   .store-header h2 { color: #fff; font-size: 20px; font-weight: 600; letter-spacing: -0.2px; }
-  .store-header p { color: #CDEAE4; font-size: 12px; margin-top: 2px; }
-  .uncheck-btn { background: none; border: none; color: #CDEAE4; cursor: pointer; padding: 8px; display: flex; }
+  .store-header p { color: #E9D5FF; font-size: 12px; margin-top: 2px; }
+  .uncheck-btn { background: none; border: none; color: #E9D5FF; cursor: pointer; padding: 8px; display: flex; }
   .uncheck-btn:hover { color: #fff; }
   ul { list-style: none; }
-  li.item { display: flex; align-items: center; gap: 10px; padding: 12px 20px; border-bottom: 1px solid #EDEFEC; }
+  li.item { display: flex; align-items: center; gap: 10px; padding: 12px 20px; border-bottom: 1px solid #2A2D34; }
   li.item:last-child { border-bottom: none; }
-  .checkbox { flex-shrink: 0; width: 24px; height: 24px; border-radius: 6px; border: 2px solid #9AA6A1; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-  .checkbox.checked { background: #0F5C56; border-color: #0F5C56; }
+  .checkbox { flex-shrink: 0; width: 24px; height: 24px; border-radius: 6px; border: 2px solid #4B4F58; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .checkbox.checked { background: #8B5CF6; border-color: #8B5CF6; }
   .checkbox svg { display: none; }
   .checkbox.checked svg { display: block; }
-  .item-text { flex: 1; text-align: left; background: none; border: none; font-size: 15px; font-weight: 500; color: #201C1A; cursor: pointer; }
-  .item-text.checked { text-decoration: line-through; color: #9A9A94; }
-  .icon-btn { flex-shrink: 0; background: none; border: none; color: #6B7570; cursor: pointer; padding: 4px; display: flex; }
-  .icon-btn:hover { color: #E4572E; }
-  .icon-btn.remove { color: #B7BDB9; }
+  .item-text { flex: 1; text-align: left; background: none; border: none; font-size: 15px; font-weight: 500; color: #F4F4F6; cursor: pointer; }
+  .item-text.checked { text-decoration: line-through; color: #6B7280; }
+  .icon-btn { flex-shrink: 0; background: none; border: none; color: #9CA3AF; cursor: pointer; padding: 4px; display: flex; }
+  .icon-btn:hover { color: #F43F5E; }
+  .icon-btn.remove { color: #6B7280; }
   .thumb-wrap { position: relative; flex-shrink: 0; }
-  .thumb { width: 36px; height: 36px; border-radius: 6px; object-fit: cover; display: block; border: 1px solid #DDE3DF; cursor: pointer; }
-  .thumb-remove { position: absolute; top: -6px; right: -6px; width: 16px; height: 16px; border-radius: 50%; background: #E4572E; color: #fff; border: 1.5px solid #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
-  .lightbox { position: fixed; inset: 0; background: rgba(20,20,18,0.85); display: none; align-items: center; justify-content: center; z-index: 100; padding: 24px; }
+  .thumb { width: 36px; height: 36px; border-radius: 6px; object-fit: cover; display: block; border: 1px solid #2A2D34; cursor: pointer; }
+  .thumb-remove { position: absolute; top: -6px; right: -6px; width: 16px; height: 16px; border-radius: 50%; background: #F43F5E; color: #fff; border: 1.5px solid #1C1E23; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
+  .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.88); display: none; align-items: center; justify-content: center; z-index: 100; padding: 24px; }
   .lightbox.open { display: flex; }
-  .lightbox img { max-width: 100%; max-height: 85vh; border-radius: 10px; box-shadow: 0 10px 40px rgba(0,0,0,0.4); }
-  .lightbox-close { position: absolute; top: 20px; right: 20px; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.15); color: #fff; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-  .lightbox-remove { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); background: #E4572E; color: #fff; border: none; border-radius: 20px; padding: 10px 20px; font-size: 14px; font-weight: 600; cursor: pointer; }
-  .add-row { display: flex; align-items: center; gap: 8px; padding: 12px 20px; background: #F5F7F5; }
-  .add-row input { flex: 1; background: transparent; border: none; font-size: 14px; outline: none; padding: 4px 0; }
-  .add-row input::placeholder { color: #8A9490; }
-  .add-btn { background: #0F5C56; color: #fff; border-radius: 50%; width: 28px; height: 28px; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
-  .add-btn:hover { background: #0B453F; }
-  .add-store-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; font-weight: 500; color: #5A6560; border: 1px dashed #B7C0BB; border-radius: 12px; padding: 12px; background: #fff; cursor: pointer; }
-  .add-store-btn:hover { color: #0F5C56; border-color: #0F5C56; }
-  .add-store-row { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #DDE3DF; border-radius: 12px; padding: 12px 16px; box-shadow: 0 1px 6px rgba(43,43,38,0.08); }
-  .add-store-row input { flex: 1; border: none; outline: none; font-size: 14px; background: transparent; }
-  .add-store-row .save { color: #0F5C56; font-weight: 600; font-size: 14px; background: none; border: none; cursor: pointer; padding: 0 8px; }
-  .add-store-row .cancel { color: #8A9490; background: none; border: none; cursor: pointer; display: flex; }
-  .loading { min-height: 100vh; display: flex; align-items: center; justify-content: center; color: #5A6560; font-weight: 500; font-size: 14px; }
-  .signin-btn { background: #0F5C56; color: #fff; border: none; border-radius: 8px; padding: 12px 24px; font-size: 14px; font-weight: 600; cursor: pointer; }
-  .signin-btn:hover { background: #0B453F; }
+  .lightbox img { max-width: 100%; max-height: 85vh; border-radius: 10px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
+  .lightbox-close { position: absolute; top: 20px; right: 20px; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.12); color: #fff; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .lightbox-remove { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); background: #F43F5E; color: #fff; border: none; border-radius: 20px; padding: 10px 20px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .add-row { display: flex; align-items: center; gap: 8px; padding: 12px 20px; background: #202329; }
+  .add-row input { flex: 1; background: transparent; border: none; font-size: 14px; outline: none; padding: 4px 0; color: #F4F4F6; }
+  .add-row input::placeholder { color: #6B7280; }
+  .add-btn { background: #8B5CF6; color: #fff; border-radius: 50%; width: 28px; height: 28px; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+  .add-btn:hover { background: #7C3AED; }
+  .add-store-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; font-weight: 500; color: #9CA3AF; border: 1px dashed #3F434C; border-radius: 12px; padding: 12px; background: #1C1E23; cursor: pointer; }
+  .add-store-btn:hover { color: #A78BFA; border-color: #8B5CF6; }
+  .add-store-row { display: flex; align-items: center; gap: 8px; background: #1C1E23; border: 1px solid #2A2D34; border-radius: 12px; padding: 12px 16px; box-shadow: 0 1px 6px rgba(0,0,0,0.4); }
+  .add-store-row input { flex: 1; border: none; outline: none; font-size: 14px; background: transparent; color: #F4F4F6; }
+  .add-store-row .save { color: #A78BFA; font-weight: 600; font-size: 14px; background: none; border: none; cursor: pointer; padding: 0 8px; }
+  .add-store-row .cancel { color: #9CA3AF; background: none; border: none; cursor: pointer; display: flex; }
+  .loading { min-height: 100vh; display: flex; align-items: center; justify-content: center; color: #9CA3AF; font-weight: 500; font-size: 14px; }
+  .signin-btn { background: #8B5CF6; color: #fff; border: none; border-radius: 8px; padding: 12px 24px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .signin-btn:hover { background: #7C3AED; }
 </style>
 </head>
 <body>
@@ -97,7 +99,8 @@ db.enablePersistence().catch((err) => {
 const docRef = db.collection("checklist").doc("main");
 
 const DEFAULT_STORES = {
-  "Grocery Store": ["Milk", "Eggs", "Bread", "Bananas", "Coffee"]
+  Costco: ["Eggs"],
+  Aldi: ["Bread"]
 };
 
 function makeId(text, i) {
