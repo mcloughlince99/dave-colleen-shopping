@@ -56,11 +56,19 @@
   .add-store-row .save { color: #0F5C56; font-weight: 600; font-size: 14px; background: none; border: none; cursor: pointer; padding: 0 8px; }
   .add-store-row .cancel { color: #8A9490; background: none; border: none; cursor: pointer; display: flex; }
   .loading { min-height: 100vh; display: flex; align-items: center; justify-content: center; color: #5A6560; font-weight: 500; font-size: 14px; }
+  .signin-btn { background: #0F5C56; color: #fff; border: none; border-radius: 8px; padding: 12px 24px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .signin-btn:hover { background: #0B453F; }
 </style>
 </head>
 <body>
 
 <div id="loading" class="loading">Loading your list...</div>
+<div id="signin" class="loading" style="display:none;">
+  <div style="text-align:center; padding: 0 24px;">
+    <p id="signin-msg" style="margin-bottom:16px;">Sign in to see your list</p>
+    <button id="signin-btn" class="signin-btn" onclick="doSignIn()">Sign in with Google</button>
+  </div>
+</div>
 <div id="app" class="wrap" style="display:none;"></div>
 
 <div id="lightbox" class="lightbox" onclick="if(event.target===this) closeLightbox();">
@@ -74,6 +82,7 @@
 <!-- Firebase (compat SDK — no build step needed) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 
 <!-- Real config lives in firebase-config.js (gitignored, never committed). -->
 <!-- Copy firebase-config.example.js to firebase-config.js and fill in your own project. -->
@@ -108,26 +117,75 @@ let suppressNextSnapshot = false;
 
 const app = document.getElementById("app");
 const loadingEl = document.getElementById("loading");
+const signinEl = document.getElementById("signin");
+const signinMsg = document.getElementById("signin-msg");
+const signinBtn = document.getElementById("signin-btn");
 
-// Real-time listener — this is what makes it sync live between devices
-docRef.onSnapshot(
-  (snap) => {
-    if (suppressNextSnapshot) { suppressNextSnapshot = false; return; }
-    if (snap.exists) {
-      state = snap.data();
-    } else {
-      state = buildDefaultState();
-      docRef.set(state).catch(() => {});
-    }
-    loadingEl.style.display = "none";
-    app.style.display = "block";
-    render();
-  },
-  (err) => {
+// Client-side hint only — the real access control is the Firestore security rule.
+const ALLOWED_EMAILS = ["mcloughlince@gmail.com", "dhbednarz@gmail.com"];
+
+const auth = firebase.auth();
+const googleProvider = new firebase.auth.GoogleAuthProvider();
+
+function doSignIn() {
+  auth.signInWithPopup(googleProvider).catch((err) => {
     console.error(err);
-    loadingEl.textContent = "Couldn't connect — check the Firebase config in this file.";
+    signinMsg.textContent = "Sign-in failed — try again.";
+  });
+}
+
+function doSignOut() {
+  auth.signOut();
+}
+
+let unsubscribeSnapshot = null;
+
+auth.onAuthStateChanged((user) => {
+  if (unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot = null; }
+
+  if (!user) {
+    loadingEl.style.display = "none";
+    app.style.display = "none";
+    signinMsg.textContent = "Sign in to see your list";
+    signinBtn.textContent = "Sign in with Google";
+    signinBtn.onclick = doSignIn;
+    signinEl.style.display = "flex";
+    return;
   }
-);
+
+  if (!ALLOWED_EMAILS.includes(user.email)) {
+    loadingEl.style.display = "none";
+    app.style.display = "none";
+    signinMsg.textContent = `${user.email} doesn't have access to this list.`;
+    signinBtn.textContent = "Try a different account";
+    signinBtn.onclick = () => { auth.signOut().then(doSignIn); };
+    signinEl.style.display = "flex";
+    return;
+  }
+
+  signinEl.style.display = "none";
+  loadingEl.style.display = "flex";
+
+  // Real-time listener — this is what makes it sync live between devices
+  unsubscribeSnapshot = docRef.onSnapshot(
+    (snap) => {
+      if (suppressNextSnapshot) { suppressNextSnapshot = false; return; }
+      if (snap.exists) {
+        state = snap.data();
+      } else {
+        state = buildDefaultState();
+        docRef.set(state).catch(() => {});
+      }
+      loadingEl.style.display = "none";
+      app.style.display = "block";
+      render();
+    },
+    (err) => {
+      console.error(err);
+      loadingEl.textContent = "Couldn't connect — check the Firebase config in this file.";
+    }
+  );
+});
 
 function save() {
   suppressNextSnapshot = true;
@@ -258,7 +316,10 @@ function render() {
   let html = `
     <div class="top-row">
       <h1>Grocery Run</h1>
-      <button class="start-over" onclick="startOver()">Start over</button>
+      <div style="display:flex; gap:14px; align-items:baseline;">
+        <button class="start-over" onclick="doSignOut()">Sign out</button>
+        <button class="start-over" onclick="startOver()">Start over</button>
+      </div>
     </div>
     <p class="progress">${totalDone} of ${allItems.length} picked up</p>
     <p class="status" id="status"></p>
