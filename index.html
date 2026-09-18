@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+<title>Grocery Run</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+  body { background: #F4F6F4; color: #201C1A; padding-bottom: 60px; }
+  .wrap { max-width: 440px; margin: 0 auto; padding: 32px 20px 24px; }
+  .top-row { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; }
+  h1 { font-family: 'Fraunces', serif; font-weight: 600; font-size: 30px; color: #0F5C56; }
+  .start-over { font-size: 12px; font-weight: 500; color: #8A9490; background: none; border: none; cursor: pointer; }
+  .start-over:hover { color: #E4572E; }
+  .progress { font-size: 14px; color: #5A6560; font-weight: 500; margin-bottom: 4px; }
+  .status { font-size: 12px; color: #8A9490; margin-bottom: 20px; min-height: 16px; }
+  .status.error { color: #E4572E; }
+  .status.ok { color: #4F8F6B; }
+  .store-card { background: #fff; border-radius: 12px; box-shadow: 0 1px 6px rgba(43,43,38,0.08); border: 1px solid #DDE3DF; margin-bottom: 24px; overflow: hidden; }
+  .store-header { background: #0F5C56; padding: 16px 20px 12px; display: flex; align-items: center; justify-content: space-between; }
+  .store-header h2 { color: #fff; font-size: 20px; font-weight: 600; letter-spacing: -0.2px; }
+  .store-header p { color: #CDEAE4; font-size: 12px; margin-top: 2px; }
+  .uncheck-btn { background: none; border: none; color: #CDEAE4; cursor: pointer; padding: 8px; display: flex; }
+  .uncheck-btn:hover { color: #fff; }
+  ul { list-style: none; }
+  li.item { display: flex; align-items: center; gap: 10px; padding: 12px 20px; border-bottom: 1px solid #EDEFEC; }
+  li.item:last-child { border-bottom: none; }
+  .checkbox { flex-shrink: 0; width: 24px; height: 24px; border-radius: 6px; border: 2px solid #9AA6A1; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .checkbox.checked { background: #0F5C56; border-color: #0F5C56; }
+  .checkbox svg { display: none; }
+  .checkbox.checked svg { display: block; }
+  .item-text { flex: 1; text-align: left; background: none; border: none; font-size: 15px; font-weight: 500; color: #201C1A; cursor: pointer; }
+  .item-text.checked { text-decoration: line-through; color: #9A9A94; }
+  .icon-btn { flex-shrink: 0; background: none; border: none; color: #6B7570; cursor: pointer; padding: 4px; display: flex; }
+  .icon-btn:hover { color: #E4572E; }
+  .icon-btn.remove { color: #B7BDB9; }
+  .thumb-wrap { position: relative; flex-shrink: 0; }
+  .thumb { width: 36px; height: 36px; border-radius: 6px; object-fit: cover; display: block; border: 1px solid #DDE3DF; cursor: pointer; }
+  .thumb-remove { position: absolute; top: -6px; right: -6px; width: 16px; height: 16px; border-radius: 50%; background: #E4572E; color: #fff; border: 1.5px solid #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
+  .lightbox { position: fixed; inset: 0; background: rgba(20,20,18,0.85); display: none; align-items: center; justify-content: center; z-index: 100; padding: 24px; }
+  .lightbox.open { display: flex; }
+  .lightbox img { max-width: 100%; max-height: 85vh; border-radius: 10px; box-shadow: 0 10px 40px rgba(0,0,0,0.4); }
+  .lightbox-close { position: absolute; top: 20px; right: 20px; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.15); color: #fff; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .lightbox-remove { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); background: #E4572E; color: #fff; border: none; border-radius: 20px; padding: 10px 20px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .add-row { display: flex; align-items: center; gap: 8px; padding: 12px 20px; background: #F5F7F5; }
+  .add-row input { flex: 1; background: transparent; border: none; font-size: 14px; outline: none; padding: 4px 0; }
+  .add-row input::placeholder { color: #8A9490; }
+  .add-btn { background: #0F5C56; color: #fff; border-radius: 50%; width: 28px; height: 28px; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+  .add-btn:hover { background: #0B453F; }
+  .add-store-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; font-weight: 500; color: #5A6560; border: 1px dashed #B7C0BB; border-radius: 12px; padding: 12px; background: #fff; cursor: pointer; }
+  .add-store-btn:hover { color: #0F5C56; border-color: #0F5C56; }
+  .add-store-row { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #DDE3DF; border-radius: 12px; padding: 12px 16px; box-shadow: 0 1px 6px rgba(43,43,38,0.08); }
+  .add-store-row input { flex: 1; border: none; outline: none; font-size: 14px; background: transparent; }
+  .add-store-row .save { color: #0F5C56; font-weight: 600; font-size: 14px; background: none; border: none; cursor: pointer; padding: 0 8px; }
+  .add-store-row .cancel { color: #8A9490; background: none; border: none; cursor: pointer; display: flex; }
+  .loading { min-height: 100vh; display: flex; align-items: center; justify-content: center; color: #5A6560; font-weight: 500; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<div id="loading" class="loading">Loading your list...</div>
+<div id="app" class="wrap" style="display:none;"></div>
+
+<div id="lightbox" class="lightbox" onclick="if(event.target===this) closeLightbox();">
+  <button class="lightbox-close" onclick="closeLightbox()" aria-label="Close">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+  </button>
+  <img id="lightbox-img" src="" />
+  <button class="lightbox-remove" id="lightbox-remove-btn" onclick="removePhotoFromLightbox()">Remove photo</button>
+</div>
+
+<!-- Firebase (compat SDK — no build step needed) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<!-- Real config lives in firebase-config.js (gitignored, never committed). -->
+<!-- Copy firebase-config.example.js to firebase-config.js and fill in your own project. -->
+<script src="firebase-config.js"></script>
+
+<script>
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+db.enablePersistence().catch((err) => {
+  console.warn("Offline persistence not enabled:", err.code);
+});
+const docRef = db.collection("checklist").doc("main");
+
+const DEFAULT_STORES = {
+  "Grocery Store": ["Milk", "Eggs", "Bread", "Bananas", "Coffee"]
+};
+
+function makeId(text, i) {
+  return text + "-" + i + "-" + Math.random().toString(36).slice(2, 7);
+}
+
+function buildDefaultState() {
+  const stores = {};
+  for (const [name, list] of Object.entries(DEFAULT_STORES)) {
+    stores[name] = list.map((text, i) => ({ id: makeId(text, i), text, checked: false, photo: null }));
+  }
+  return { stores };
+}
+
+let state = null;
+let suppressNextSnapshot = false;
+
+const app = document.getElementById("app");
+const loadingEl = document.getElementById("loading");
+
+// Real-time listener — this is what makes it sync live between devices
+docRef.onSnapshot(
+  (snap) => {
+    if (suppressNextSnapshot) { suppressNextSnapshot = false; return; }
+    if (snap.exists) {
+      state = snap.data();
+    } else {
+      state = buildDefaultState();
+      docRef.set(state).catch(() => {});
+    }
+    loadingEl.style.display = "none";
+    app.style.display = "block";
+    render();
+  },
+  (err) => {
+    console.error(err);
+    loadingEl.textContent = "Couldn't connect — check the Firebase config in this file.";
+  }
+);
+
+function save() {
+  suppressNextSnapshot = true;
+  docRef.set(state).catch((err) => {
+    console.error(err);
+    showStatus("Couldn't save — check your connection.", true);
+  });
+}
+
+let statusTimeout;
+function showStatus(msg, isError) {
+  const el = document.getElementById("status");
+  if (!el) return;
+  el.textContent = msg;
+  el.className = "status " + (isError ? "error" : "ok");
+  clearTimeout(statusTimeout);
+  statusTimeout = setTimeout(() => { el.textContent = ""; el.className = "status"; }, 2000);
+}
+
+function resizePhoto(file, callback) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      const maxW = 900;
+      const scale = Math.min(1, maxW / img.width);
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      callback(canvas.toDataURL("image/jpeg", 0.7));
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function toggleItem(storeName, id) {
+  state.stores[storeName] = state.stores[storeName].map(i =>
+    i.id === id ? { ...i, checked: !i.checked } : i
+  );
+  render(); save();
+}
+
+function removeItem(storeName, id) {
+  state.stores[storeName] = state.stores[storeName].filter(i => i.id !== id);
+  render(); save();
+}
+
+function addItem(storeName, text) {
+  if (!text.trim()) return;
+  state.stores[storeName].push({ id: makeId(text, Date.now()), text: text.trim(), checked: false, photo: null });
+  render(); save();
+}
+
+const FIRESTORE_DOC_LIMIT = 1048576; // Firestore's per-document size cap
+
+function attachPhoto(storeName, id, file) {
+  if (!file) return;
+  resizePhoto(file, (dataUrl) => {
+    const proposed = { ...state, stores: { ...state.stores,
+      [storeName]: state.stores[storeName].map(i => i.id === id ? { ...i, photo: dataUrl } : i)
+    }};
+    if (JSON.stringify(proposed).length > FIRESTORE_DOC_LIMIT * 0.9) {
+      showStatus("Photo won't fit — list is getting full of photos. Remove one first.", true);
+      return;
+    }
+    state = proposed;
+    render(); save();
+    showStatus("Photo saved", false);
+  });
+}
+
+function removePhoto(storeName, id) {
+  state.stores[storeName] = state.stores[storeName].map(i =>
+    i.id === id ? { ...i, photo: null } : i
+  );
+  render(); save();
+}
+
+let lightboxTarget = null;
+
+function openLightbox(storeName, id) {
+  const item = state.stores[storeName].find(i => i.id === id);
+  if (!item || !item.photo) return;
+  lightboxTarget = { storeName, id };
+  document.getElementById("lightbox-img").src = item.photo;
+  document.getElementById("lightbox").classList.add("open");
+}
+
+function closeLightbox() {
+  document.getElementById("lightbox").classList.remove("open");
+  lightboxTarget = null;
+}
+
+function removePhotoFromLightbox() {
+  if (!lightboxTarget) return;
+  removePhoto(lightboxTarget.storeName, lightboxTarget.id);
+  closeLightbox();
+}
+
+function uncheckAll(storeName) {
+  state.stores[storeName] = state.stores[storeName].map(i => ({ ...i, checked: false }));
+  render(); save();
+}
+
+function addStore(name) {
+  name = name.trim();
+  if (!name || state.stores[name]) return;
+  state.stores[name] = [];
+  render(); save();
+}
+
+function startOver() {
+  if (!confirm("Reset the whole list back to the original items? This clears all checks and photos.")) return;
+  state = buildDefaultState();
+  render(); save();
+}
+
+let addingStore = false;
+
+function render() {
+  const stores = state.stores;
+  const allItems = Object.values(stores).flat();
+  const totalDone = allItems.filter(i => i.checked).length;
+
+  let html = `
+    <div class="top-row">
+      <h1>Grocery Run</h1>
+      <button class="start-over" onclick="startOver()">Start over</button>
+    </div>
+    <p class="progress">${totalDone} of ${allItems.length} picked up</p>
+    <p class="status" id="status"></p>
+  `;
+
+  for (const [name, items] of Object.entries(stores)) {
+    const done = items.filter(i => i.checked).length;
+    html += `
+      <div class="store-card">
+        <div class="store-header">
+          <div>
+            <h2>${escapeHtml(name)}</h2>
+            <p>${done} / ${items.length} in cart</p>
+          </div>
+          <button class="uncheck-btn" onclick="uncheckAll('${escapeAttr(name)}')" aria-label="Uncheck all">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+          </button>
+        </div>
+        <ul>
+    `;
+    items.forEach(item => {
+      html += `
+        <li class="item">
+          <button class="checkbox ${item.checked ? "checked" : ""}" onclick="toggleItem('${escapeAttr(name)}','${escapeAttr(item.id)}')" aria-label="toggle">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+          </button>
+          <button class="item-text ${item.checked ? "checked" : ""}" onclick="toggleItem('${escapeAttr(name)}','${escapeAttr(item.id)}')">${escapeHtml(item.text)}</button>
+          ${item.photo
+            ? `<div class="thumb-wrap">
+                 <img class="thumb" src="${item.photo}" onclick="openLightbox('${escapeAttr(name)}','${escapeAttr(item.id)}')" />
+                 <button class="thumb-remove" onclick="removePhoto('${escapeAttr(name)}','${escapeAttr(item.id)}')" aria-label="Remove photo">
+                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                 </button>
+               </div>`
+            : `<button class="icon-btn" onclick="document.getElementById('file-${escapeAttr(item.id)}').click()" aria-label="Attach photo">
+                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+               </button>`
+          }
+          <input type="file" accept="image/*" id="file-${escapeAttr(item.id)}" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;" onchange="attachPhoto('${escapeAttr(name)}','${escapeAttr(item.id)}', this.files[0])" />
+          <button class="icon-btn remove" onclick="removeItem('${escapeAttr(name)}','${escapeAttr(item.id)}')" aria-label="Remove">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </li>
+      `;
+    });
+    html += `
+        </ul>
+        <form class="add-row" onsubmit="event.preventDefault(); addItem('${escapeAttr(name)}', this.itemInput.value); this.reset();">
+          <input type="text" name="itemInput" placeholder="Add item to ${escapeAttr(name)}..." />
+          <button type="submit" class="add-btn" aria-label="Add">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+        </form>
+      </div>
+    `;
+  }
+
+  if (addingStore) {
+    html += `
+      <form class="add-store-row" onsubmit="event.preventDefault(); addStore(this.storeInput.value); addingStore=false; render();">
+        <input type="text" name="storeInput" id="new-store-input" placeholder="Store name..." autofocus />
+        <button type="submit" class="save">Add</button>
+        <button type="button" class="cancel" onclick="addingStore=false; render();">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </form>
+    `;
+  } else {
+    html += `
+      <button class="add-store-btn" onclick="addingStore=true; render(); document.getElementById('new-store-input').focus();">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add another store
+      </button>
+    `;
+  }
+
+  app.innerHTML = html;
+}
+
+function escapeHtml(str) {
+  const d = document.createElement("div");
+  d.textContent = str;
+  return d.innerHTML;
+}
+function escapeAttr(str) {
+  return String(str).replace(/'/g, "\\'");
+}
+</script>
+</body>
+</html>
