@@ -69,6 +69,13 @@
   .who-tag.colleen { background: #22D3EE; color: #0B2530; }
   .who-tag.dave { background: #F59E0B; color: #2B1A02; }
   .who-tag.both { background: #3F434C; color: #E5E7EB; }
+  /* Who-shops: one-time "who's on this phone?" picker, and "You're X · change" line */
+  .who-pick { display: flex; align-items: center; gap: 8px; background: #1C1E23; border: 1px solid #8B5CF6; border-radius: 10px; padding: 10px 14px; margin-bottom: 20px; font-size: 14px; }
+  .who-pick span { flex: 1; }
+  .who-pick button { background: #8B5CF6; color: #fff; border: none; border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .filter-bar { margin-bottom: 6px !important; }
+  .who-me { font-size: 12px; color: #6B7280; margin-bottom: 20px; }
+  .who-me button { background: none; border: none; color: #9CA3AF; font-size: 12px; text-decoration: underline; cursor: pointer; }
   .empty-note { padding: 12px 20px; font-size: 13px; color: #6B7280; }
 </style>
 </head>
@@ -134,18 +141,38 @@ const signinEl = document.getElementById("signin");
 const signinMsg = document.getElementById("signin-msg");
 const signinBtn = document.getElementById("signin-btn");
 
-// Client-side hint only — the real access control is the Firestore security rule.
-const ALLOWED_EMAILS = ["mcloughlince@gmail.com", "dhbednarz@gmail.com"];
+// Who may use the list is decided ONLY by the Firestore security rule (in the
+// Firebase console). No email addresses live in this public file: if the rule
+// refuses an account, the listener's error handler below shows "no access".
 
 // ---- Who shops for what ----
 // Each item has a `who`: "colleen", "dave", or "both" (we look together).
 // Old items saved before this feature have no `who`, so we treat them as "both".
-const DAVE_EMAIL = "dhbednarz@gmail.com";
 const WHO_LABEL = { colleen: "C", dave: "D", both: "Both" };
 const WHO_NEXT = { colleen: "dave", dave: "both", both: "colleen" }; // tap order
 
-let myKey = "colleen";   // set from the signed-in Google account below
-let otherKey = "dave";
+// Which person is signed in on this phone. Each person picks "Colleen" or
+// "Dave" once; the answer is saved in a protected Firestore doc
+// (checklist/people), keyed by their Firebase user id — not in this file.
+const peopleRef = db.collection("checklist").doc("people");
+let myUid = null;
+let peopleLoaded = false; // don't flash the "who are you?" picker before we know
+let myKey = null;         // "colleen" | "dave" | null (not picked yet)
+let otherKey = null;
+
+function setMe(key) {
+  peopleRef.set({ [myUid]: key }, { merge: true }).catch((err) => {
+    console.error(err);
+    showStatus("Couldn't save — check your connection.", true);
+  });
+}
+
+// "change" link: clear my pick so the picker shows again
+function clearMe() {
+  myKey = null; otherKey = null;
+  peopleRef.set({ [myUid]: firebase.firestore.FieldValue.delete() }, { merge: true }).catch(() => {});
+  render();
+}
 
 // Which view is showing: "all" | "me" | "other". Remembered on this phone only.
 let filter = localStorage.getItem("grocery-filter") || "all";
@@ -157,6 +184,7 @@ function whoOf(item) {
 // Should this item show under the current filter?
 // "Mine" = my items + together items; same idea for the other person.
 function isVisible(item) {
+  if (!myKey) return true; // until you pick who you are, show everything
   const w = whoOf(item);
   if (filter === "me") return w === myKey || w === "both";
   if (filter === "other") return w === otherKey || w === "both";
@@ -192,9 +220,22 @@ function doSignOut() {
 }
 
 let unsubscribeSnapshot = null;
+let unsubscribePeople = null;
+
+// Shown when the security rule refuses this Google account
+function showNoAccess(user) {
+  loadingEl.style.display = "none";
+  app.style.display = "none";
+  signinMsg.textContent = `${user.email} doesn't have access to this list.`;
+  signinBtn.textContent = "Try a different account";
+  signinBtn.onclick = () => { auth.signOut().then(doSignIn); };
+  signinEl.style.display = "flex";
+}
 
 auth.onAuthStateChanged((user) => {
   if (unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot = null; }
+  if (unsubscribePeople) { unsubscribePeople(); unsubscribePeople = null; }
+  myUid = null; myKey = null; otherKey = null; peopleLoaded = false;
 
   if (!user) {
     loadingEl.style.display = "none";
@@ -206,19 +247,22 @@ auth.onAuthStateChanged((user) => {
     return;
   }
 
-  if (!ALLOWED_EMAILS.includes(user.email)) {
-    loadingEl.style.display = "none";
-    app.style.display = "none";
-    signinMsg.textContent = `${user.email} doesn't have access to this list.`;
-    signinBtn.textContent = "Try a different account";
-    signinBtn.onclick = () => { auth.signOut().then(doSignIn); };
-    signinEl.style.display = "flex";
-    return;
-  }
-
-  // Work out who "Mine" means for this person
-  myKey = user.email === DAVE_EMAIL ? "dave" : "colleen";
-  otherKey = myKey === "dave" ? "colleen" : "dave";
+  // Listen for who's who (this person's pick), live
+  myUid = user.uid;
+  unsubscribePeople = peopleRef.onSnapshot(
+    (snap) => {
+      const people = snap.exists ? snap.data() : {};
+      const pick = people[myUid];
+      myKey = pick === "colleen" || pick === "dave" ? pick : null;
+      otherKey = myKey === "dave" ? "colleen" : myKey === "colleen" ? "dave" : null;
+      peopleLoaded = true;
+      if (state) render();
+    },
+    (err) => {
+      if (err.code === "permission-denied") showNoAccess(user);
+      else console.error(err);
+    }
+  );
 
   signinEl.style.display = "none";
   loadingEl.style.display = "flex";
@@ -239,6 +283,8 @@ auth.onAuthStateChanged((user) => {
     },
     (err) => {
       console.error(err);
+      // The security rule said no: this Google account isn't on the list
+      if (err.code === "permission-denied") { showNoAccess(user); return; }
       loadingEl.textContent = "Couldn't connect — check the Firebase config in this file.";
     }
   );
@@ -370,7 +416,8 @@ function render() {
   // Counts only include what the current filter shows
   const allItems = Object.values(stores).flat().filter(isVisible);
   const totalDone = allItems.filter(i => i.checked).length;
-  const otherName = otherKey === "dave" ? "Dave's" : "Colleen's";
+  const otherName = otherKey === "colleen" ? "Colleen's" : "Dave's";
+  const meName = myKey === "dave" ? "Dave" : "Colleen";
 
   let html = `
     <div class="top-row">
@@ -382,12 +429,30 @@ function render() {
     </div>
     <p class="progress">${totalDone} of ${allItems.length} picked up</p>
     <p class="status" id="status"></p>
-    <div class="filter-bar">
-      <button class="${filter === "all" ? "active" : ""}" onclick="setFilter('all')">Everything</button>
-      <button class="${filter === "me" ? "active" : ""}" onclick="setFilter('me')">Mine</button>
-      <button class="${filter === "other" ? "active" : ""}" onclick="setFilter('other')">${otherName}</button>
-    </div>
   `;
+
+  if (!myKey) {
+    // One-time question per person, so "Mine" knows who you are
+    if (peopleLoaded) {
+      html += `
+        <div class="who-pick">
+          <span>Who's on this phone?</span>
+          <button onclick="setMe('colleen')">Colleen</button>
+          <button onclick="setMe('dave')">Dave</button>
+        </div>
+      `;
+    }
+  } else {
+    const f = filter; // "all" | "me" | "other"
+    html += `
+      <div class="filter-bar">
+        <button class="${f === "all" ? "active" : ""}" onclick="setFilter('all')">Everything</button>
+        <button class="${f === "me" ? "active" : ""}" onclick="setFilter('me')">Mine</button>
+        <button class="${f === "other" ? "active" : ""}" onclick="setFilter('other')">${otherName}</button>
+      </div>
+      <p class="who-me">You're ${meName} · <button onclick="clearMe()">change</button></p>
+    `;
+  }
 
   for (const [name, storeItems] of Object.entries(stores)) {
     const items = storeItems.filter(isVisible); // only this view's items

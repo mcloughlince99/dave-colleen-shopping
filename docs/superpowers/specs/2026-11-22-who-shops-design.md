@@ -21,8 +21,14 @@ time who grabs each item, then each see just their part while shopping.
 - Items with no tag yet (everything on the list today) count as **Both**, so
   nothing disappears from anyone's view.
 - New items default to **Both**; you tap once to give it to one person.
-- "Mine" is worked out from the signed-in Google account, no setup needed.
-- While in there: fix the quoting bug so a `"` or `\` in a name can't break the page.
+- "Mine" is worked out from the signed-in Google account. Since the email
+  list is leaving the page, the first time each of you signs in the app asks
+  once "Are you Colleen or Dave?" and saves the answer in a protected
+  Firestore doc (`checklist/people`), not in the public code.
+- While in there (security review, approved): fix the quoting bug so a `"` or
+  `\` in a name or photo can't break the page or run code, and remove the
+  two email addresses from the page (the Firestore rule does the real check;
+  the page just says "this account doesn't have access" if the rule refuses).
 
 ## Non-goals
 - No separate lists/stores per person, no notifications, no change to the
