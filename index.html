@@ -60,6 +60,16 @@
   .loading { min-height: 100vh; display: flex; align-items: center; justify-content: center; color: #9CA3AF; font-weight: 500; font-size: 14px; }
   .signin-btn { background: #8B5CF6; color: #fff; border: none; border-radius: 8px; padding: 12px 24px; font-size: 14px; font-weight: 600; cursor: pointer; }
   .signin-btn:hover { background: #7C3AED; }
+  /* Who-shops: filter bar (Everything / Mine / Dave's) */
+  .filter-bar { display: flex; background: #1C1E23; border: 1px solid #2A2D34; border-radius: 10px; padding: 3px; margin-bottom: 20px; }
+  .filter-bar button { flex: 1; background: none; border: none; color: #9CA3AF; font-size: 13px; font-weight: 600; padding: 8px 0; border-radius: 7px; cursor: pointer; }
+  .filter-bar button.active { background: #8B5CF6; color: #fff; }
+  /* Who-shops: the little C / D / Both tag on each item (tap to switch) */
+  .who-tag { flex-shrink: 0; min-width: 40px; border-radius: 12px; border: none; font-size: 11px; font-weight: 700; padding: 4px 8px; cursor: pointer; }
+  .who-tag.colleen { background: #22D3EE; color: #0B2530; }
+  .who-tag.dave { background: #F59E0B; color: #2B1A02; }
+  .who-tag.both { background: #3F434C; color: #E5E7EB; }
+  .empty-note { padding: 12px 20px; font-size: 13px; color: #6B7280; }
 </style>
 </head>
 <body>
@@ -110,7 +120,7 @@ function makeId(text, i) {
 function buildDefaultState() {
   const stores = {};
   for (const [name, list] of Object.entries(DEFAULT_STORES)) {
-    stores[name] = list.map((text, i) => ({ id: makeId(text, i), text, checked: false, photo: null }));
+    stores[name] = list.map((text, i) => ({ id: makeId(text, i), text, checked: false, photo: null, who: "both" }));
   }
   return { stores };
 }
@@ -126,6 +136,46 @@ const signinBtn = document.getElementById("signin-btn");
 
 // Client-side hint only — the real access control is the Firestore security rule.
 const ALLOWED_EMAILS = ["mcloughlince@gmail.com", "dhbednarz@gmail.com"];
+
+// ---- Who shops for what ----
+// Each item has a `who`: "colleen", "dave", or "both" (we look together).
+// Old items saved before this feature have no `who`, so we treat them as "both".
+const DAVE_EMAIL = "dhbednarz@gmail.com";
+const WHO_LABEL = { colleen: "C", dave: "D", both: "Both" };
+const WHO_NEXT = { colleen: "dave", dave: "both", both: "colleen" }; // tap order
+
+let myKey = "colleen";   // set from the signed-in Google account below
+let otherKey = "dave";
+
+// Which view is showing: "all" | "me" | "other". Remembered on this phone only.
+let filter = localStorage.getItem("grocery-filter") || "all";
+
+function whoOf(item) {
+  return WHO_LABEL[item.who] ? item.who : "both";
+}
+
+// Should this item show under the current filter?
+// "Mine" = my items + together items; same idea for the other person.
+function isVisible(item) {
+  const w = whoOf(item);
+  if (filter === "me") return w === myKey || w === "both";
+  if (filter === "other") return w === otherKey || w === "both";
+  return true;
+}
+
+function setFilter(f) {
+  filter = f;
+  localStorage.setItem("grocery-filter", f);
+  render();
+}
+
+// Tap the tag: C -> D -> Both -> C
+function cycleWho(storeName, id) {
+  state.stores[storeName] = state.stores[storeName].map(i =>
+    i.id === id ? { ...i, who: WHO_NEXT[whoOf(i)] } : i
+  );
+  render(); save();
+}
 
 const auth = firebase.auth();
 const googleProvider = new firebase.auth.GoogleAuthProvider();
@@ -165,6 +215,10 @@ auth.onAuthStateChanged((user) => {
     signinEl.style.display = "flex";
     return;
   }
+
+  // Work out who "Mine" means for this person
+  myKey = user.email === DAVE_EMAIL ? "dave" : "colleen";
+  otherKey = myKey === "dave" ? "colleen" : "dave";
 
   signinEl.style.display = "none";
   loadingEl.style.display = "flex";
@@ -241,7 +295,7 @@ function removeItem(storeName, id) {
 
 function addItem(storeName, text) {
   if (!text.trim()) return;
-  state.stores[storeName].push({ id: makeId(text, Date.now()), text: text.trim(), checked: false, photo: null });
+  state.stores[storeName].push({ id: makeId(text, Date.now()), text: text.trim(), checked: false, photo: null, who: "both" });
   render(); save();
 }
 
@@ -313,8 +367,10 @@ let addingStore = false;
 
 function render() {
   const stores = state.stores;
-  const allItems = Object.values(stores).flat();
+  // Counts only include what the current filter shows
+  const allItems = Object.values(stores).flat().filter(isVisible);
   const totalDone = allItems.filter(i => i.checked).length;
+  const otherName = otherKey === "dave" ? "Dave's" : "Colleen's";
 
   let html = `
     <div class="top-row">
@@ -326,9 +382,15 @@ function render() {
     </div>
     <p class="progress">${totalDone} of ${allItems.length} picked up</p>
     <p class="status" id="status"></p>
+    <div class="filter-bar">
+      <button class="${filter === "all" ? "active" : ""}" onclick="setFilter('all')">Everything</button>
+      <button class="${filter === "me" ? "active" : ""}" onclick="setFilter('me')">Mine</button>
+      <button class="${filter === "other" ? "active" : ""}" onclick="setFilter('other')">${otherName}</button>
+    </div>
   `;
 
-  for (const [name, items] of Object.entries(stores)) {
+  for (const [name, storeItems] of Object.entries(stores)) {
+    const items = storeItems.filter(isVisible); // only this view's items
     const done = items.filter(i => i.checked).length;
     html += `
       <div class="store-card">
@@ -350,9 +412,10 @@ function render() {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
           </button>
           <button class="item-text ${item.checked ? "checked" : ""}" onclick="toggleItem('${escapeAttr(name)}','${escapeAttr(item.id)}')">${escapeHtml(item.text)}</button>
+          <button class="who-tag ${whoOf(item)}" onclick="cycleWho('${escapeAttr(name)}','${escapeAttr(item.id)}')" aria-label="Who shops for this">${WHO_LABEL[whoOf(item)]}</button>
           ${item.photo
             ? `<div class="thumb-wrap">
-                 <img class="thumb" src="${item.photo}" onclick="openLightbox('${escapeAttr(name)}','${escapeAttr(item.id)}')" />
+                 <img class="thumb" src="${escapeHtml(item.photo)}" onclick="openLightbox('${escapeAttr(name)}','${escapeAttr(item.id)}')" />
                  <button class="thumb-remove" onclick="removePhoto('${escapeAttr(name)}','${escapeAttr(item.id)}')" aria-label="Remove photo">
                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                  </button>
@@ -368,10 +431,13 @@ function render() {
         </li>
       `;
     });
+    if (items.length === 0 && storeItems.length > 0) {
+      html += `<li class="empty-note">Nothing here for this view</li>`;
+    }
     html += `
         </ul>
         <form class="add-row" onsubmit="event.preventDefault(); addItem('${escapeAttr(name)}', this.itemInput.value); this.reset();">
-          <input type="text" name="itemInput" placeholder="Add item to ${escapeAttr(name)}..." />
+          <input type="text" name="itemInput" placeholder="Add item to ${escapeHtml(name)}..." />
           <button type="submit" class="add-btn" aria-label="Add">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           </button>
@@ -402,13 +468,16 @@ function render() {
   app.innerHTML = html;
 }
 
+// Make text safe to show inside HTML (including inside "quoted" attributes)
 function escapeHtml(str) {
-  const d = document.createElement("div");
-  d.textContent = str;
-  return d.innerHTML;
+  return String(str)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
+// Make text safe inside onclick="fn('...')": first escape \ and ' for the
+// JavaScript string, then HTML-escape so " can't end the attribute early.
 function escapeAttr(str) {
-  return String(str).replace(/'/g, "\\'");
+  return escapeHtml(String(str).replace(/\\/g, "\\\\").replace(/'/g, "\\'"));
 }
 </script>
 </body>
